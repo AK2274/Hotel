@@ -1,0 +1,67 @@
+
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+public class Billing {
+    private int reservationId;
+    private double roomCharge;
+    private double additionalCharges;
+    private double taxRate = 0.10; // 10% tax
+    private boolean isPaid;
+
+    public Billing(int reservationId, double roomCharge, double additionalCharges, boolean isPaid) {
+        this.reservationId = reservationId;
+        this.roomCharge = roomCharge;
+        this.additionalCharges = additionalCharges;
+        this.isPaid = isPaid;
+    }
+
+    public double calculateTotal() {
+        return (roomCharge + additionalCharges) * (1 + taxRate);
+    }
+
+    public static void generateInvoice(int reservationId) {
+        String sql = "SELECT * FROM billing WHERE reservation_id = ?";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, reservationId);
+            ResultSet rs = pstmt.executeQuery();
+
+            if (rs.next()) {
+                double total = rs.getDouble("room_charge") + rs.getDouble("additional_charges");
+                double tax = total * 0.10;
+                double finalAmount = total + tax;
+
+                System.out.println("Invoice for Reservation ID: " + reservationId);
+                System.out.println("Room Charges: $" + rs.getDouble("room_charge"));
+                System.out.println("Additional Charges: $" + rs.getDouble("additional_charges"));
+                System.out.println("Tax (10%): $" + tax);
+                System.out.println("Total Amount: $" + finalAmount);
+                System.out.println("Paid: " + (rs.getBoolean("is_paid") ? "Yes" : "No"));
+            } else {
+                System.out.println("No billing record found for Reservation ID: " + reservationId);
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void processPayment(int reservationId) {
+        String sql = "UPDATE billing SET is_paid = TRUE WHERE reservation_id = ?";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, reservationId);
+            pstmt.executeUpdate();
+            System.out.println("Payment successful for Reservation ID: " + reservationId);
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+}
